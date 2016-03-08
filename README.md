@@ -4,6 +4,10 @@ This is a collection of python scripts to determine good views of macromolecular
 
 Currently, the scripts use a random sampling of points on a sphere with fixed radius from the center of mass of a selection to determine a set of candidate viewpoints. Then, the viewpoint with maximal viewpoint entropy is chosen as the 'best' viewpoint. 
 
+## Dependencies
+
+The scripts currently depend on [cgkit light](http://cgkit.sourceforge.net/doc2/introduction.html#cgkit-light).
+
 ## Installation
 
 1. Clone the repository
@@ -26,7 +30,7 @@ best_view all, residue, 100
 
 ## Usage
 
-The script currently exposes a singel command:
+The script currently exposes a single command:
 
 ```
 best_view(selection='all', by='residues', n=10, width=512, height=512, ray=0, prefix='', add_PCA = False)
