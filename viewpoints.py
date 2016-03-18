@@ -18,7 +18,22 @@ import cv2
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
 
-DEBUG = False
+DEBUG = True
+
+FALSE_COLOR_SETTINGS = {
+    'specular': 0,
+    'light_count': 1,
+    'ambient': 1,
+    'direct': 0,
+    'shininess': 0,
+    'reflect': 0,
+    'depth_cue': 0,
+    'fog': 0,
+    'cartoon_discrete_colors': 1,
+    'cartoon_use_shader': 1,
+    'orthoscopic': 1
+    # 'bg_rgb': 'black' # breaks with dangling pointer
+}
 
 def viewpoint_entropy(selection='all', by='residues', view=None, width=512, height=512, keepFile=''):
     '''
@@ -99,8 +114,8 @@ def assign_colors(selection, by='residues'):
                 counter += increment
                 previous = chain
 
-        #print counter, model, chain, ss, resi, name
-        stored.index.append(counter if counter % 2 else -counter)
+        # alternating colors from both ends of the spectrum
+        stored.index.append(counter if counter % 2 else -counter) 
 
     cmd.alter(selection, 'b = stored.index.pop(0)')
     cmd.spectrum('b', 'rainbow', selection)
@@ -114,7 +129,7 @@ def compute_viewpoint_entropy(features, view, width, height, keepFile=''):
     
     cmd.set_view(view)
 
-    apply_false_color_settings()
+#    apply_false_color_settings()
     tmpFile = render_false_color_image(width, height, keepFile)
 
     e = 0.0
@@ -129,21 +144,15 @@ def compute_viewpoint_entropy(features, view, width, height, keepFile=''):
 
     return e
 
-def apply_false_color_settings(useShader = False):
 
-    cmd.set('specular', 0)
-    cmd.set('light_count', 1)   # ambient light
-    cmd.set('ambient', 1)
-    cmd.set('direct', 0)
-    cmd.set('shininess', 0)
-    cmd.set('reflect', 0)
-    cmd.set('depth_cue', 0)
-    cmd.set('fog', 0)
 
-    cmd.set('cartoon_discrete_colors', 1)
-    cmd.set('cartoon_use_shader', useShader)
-    cmd.set('orthoscopic', 1) # not a requirement, make configurable?
-    cmd.set('bg_rgb', 'black')
+    
+
+def apply_false_color_settings(useShader = 1):
+
+    for key in FALSE_COLOR_SETTINGS:
+        value = FALSE_COLOR_SETTINGS[key]
+        cmd.set(key, value)
 
 def render_false_color_image(width, height, filename=''):
     global tmpdir
@@ -162,6 +171,7 @@ def render_false_color_image(width, height, filename=''):
     return tmpFile
 
 def get_temporary_file(filename=''):
+    global tmpdir
     i = 0
     tmpFile = "%s/%s_%i.png" % (tmpdir, filename, i)
     while os.path.exists(tmpFile):
@@ -176,23 +186,23 @@ def sample_viewpoint_entropy(views, selection='all', by='residues', width=512, h
     # formalise parameters
     width, height = int(width), int(height)
 
-    push()
-
     m = assign_colors(selection, by)
+
+    keepFile = ''
+    if DEBUG:
+        keepFile = 'debug'
 
     e = []
     for view in views:
 
-        entropy = compute_viewpoint_entropy(m, view, width, height)
+        entropy = compute_viewpoint_entropy(m, view, width, height, keepFile)
         e.append((view, entropy))
         
-    pop()
     return e
 
 def get_views(points):
     ''' computes view matrices from points.
         assumes that the current view defines the up vector '''
-    push()
 
     view = cmd.get_view(quiet=not DEBUG)
     rot = get_rotation(view)
@@ -245,19 +255,19 @@ def get_views(points):
         e.append((point, new_view))
         
     setEpsilon(epsilon)
-    pop()
+
     return e
 
 def get_cam(view):
     ''' extracts the viewpoint (look-at) from the view matrix'''
-    rot = getRotationFromView(view)
+    rot = get_rotation_from_view(view)
     cam = rot.getRow(2).normalize()
 
     return cam
 
 def draw_up_vector(radius=1.0, rgb=[1.0, 1.0, 1.0], selection='all'):
     view = cmd.get_view(quiet=1)
-    rot = getRotationFromView(view)
+    rot = get_rotation_from_view(view)
     cam = rot.getRow(2).normalize()
     model_up = rot.getRow(1).normalize()
     right = rot.getRow(0).normalize()
@@ -300,21 +310,21 @@ def best_view(selection='all', by='residues', n=10, width=512, height=512, ray=0
         points.append(pca1)
         points.append(pca2)
 
-    if DEBUG:
-        # works only in this order for some reason...
-        show_points(points, [1.0, 0.0, 0.0], selection)
-        draw_up_vector(selection=selection)
-        cmd.set("ray_trace_mode", '1')
-        cmd.zoom('all', 2.0, 0, 1)
+    # if DEBUG:
+    #     # works only in this order for some reason...
+    #     show_points(points, [1.0, 0.0, 0.0], selection)
+    #     draw_up_vector(selection=selection)
+    #     cmd.set("ray_trace_mode", '1')
+    #     cmd.zoom('all', 2.0, 0, 1)
 
     views = get_views(points)
 
     # compute attributes
     entropies = sample_viewpoint_entropy([view for (point, view) in views], selection, by, width, height)
 
-    ret = []
+    # ret = []
 
-    basename = string.replace(selection," ","_")
+    # basename = string.replace(selection," ","_")
 
     maxi = -1.0;
     best_view = None
@@ -334,7 +344,7 @@ def get_PCA_views(selection):
 
     cmd.orient(selection)
     view = cmd.get_view(quiet=1)
-    rot = getRotationFromView(view)
+    rot = get_rotation_from_view(view)
     
     # now rot resembles view
     pc3 = rot.getRow(2)
@@ -380,8 +390,7 @@ def sample_and_show_points(selection='all', n=10, attribute = 'viewpoint_entropy
     show_attribute_sphere(points, attribs, selection, attribute)
     #pop()
 
-def push():
-    """save current state to disk"""
+def push_session():
     global tmpdir
     global sessionfiles
 
@@ -404,8 +413,7 @@ def push():
     # myspace = {'color_list':[]}
     #cmd.iterate(selection, 'stored.color_list.append((chain, resi, name, color))')
 
-def pop():
-    """restore last state that was saved via push"""
+def pop_session():
     global sessionfiles
 
     if len(sessionfiles):
@@ -424,6 +432,33 @@ def pop():
     # also cleanup after final pop
     if not len(sessionfiles):
         cleanup()
+
+def push():
+    """save current state to disk"""
+    global settings_stack
+
+    push_session()
+
+    settings = {}
+    for key in FALSE_COLOR_SETTINGS:
+        settings[key] = cmd.get(key)
+
+    settings_stack.append(settings)
+
+def pop():
+    """restore last state that was saved via push"""
+    global settings_stack
+
+    pop_session()
+
+    if len(settings_stack):
+        settings = settings_stack.pop()
+        for key in settings:
+            print 'setting ', key, ' to ', settings[key]
+            cmd.set(key, settings[key])
+
+        if DEBUG:
+            print "popping ", settings
 
 
 def cleanup():
@@ -565,6 +600,13 @@ def show_points(points, color = [1.0, 0.0, 0.0], selection='all', name = 'sample
     #spheres.extend([END])
     cmd.load_cgo(spheres, name, 1)
 
+def get_rotation_from_view(view):
+    rot = mat3(view[0:9])
+    # mat3 expects row-wise in constructor
+    rot = rot.transpose()
+    # now rot resembles view, i.e. column-major
+    # matrix which rotates model axes to camera axes
+    return rot
 
 def rotation_to(a, b):
     dot = a * b
@@ -585,8 +627,14 @@ def rotation_to(a, b):
 # FIXME: shouldn't use globals
 counter = 0
 colors = {}
-tmpdir = ""
+tmpdir = "."
+settings_stack = []
 sessionfiles = []
 
 
 cmd.extend('best_view', best_view)
+if DEBUG:
+    cmd.extend('assign_colors', assign_colors)
+    cmd.extend('apply_false_color_settings', apply_false_color_settings)
+    cmd.extend('push', push)
+    cmd.extend('pop', pop)
