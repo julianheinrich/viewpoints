@@ -13,7 +13,7 @@ import csv
 from axes import *
 import com #center of mass
 import random
-from collections import namedtuple
+from collections import namedtuple, Counter
 import cv2
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
@@ -126,26 +126,30 @@ def assign_colors(selection, by='residues'):
 
 
 def compute_viewpoint_entropy(features, view, width, height, keepFile=''):
-    
+    global last_entropy
     cmd.set_view(view)
 
-#    apply_false_color_settings()
-    tmpFile = render_false_color_image(width, height, keepFile)
+    last_entropy = -1.0
+
+    # this calls capture_image
+    cmd.draw(width, height, antialias = 0)
 
     e = 0.0
-    if os.path.isfile(tmpFile):
-        img = Image.open(tmpFile)
-        e = image_entropy(img)
+    if last_entropy >= 0.0:
         # normalize by number of features
-        e /= log(features + 1, 2)
-
-        if not len(keepFile):
-            os.remove(tmpFile)
+        e = last_entropy / log(features + 1, 2)
 
     return e
 
+def capture_image(img):
+    global last_entropy
 
+    print(img.shape)
+    last_entropy = image_entropy(img)
+    print(last_entropy)
 
+    #if DEBUG:
+    #    print('entropy: ' + entropy);
     
 
 def apply_false_color_settings(useShader = 1):
@@ -157,18 +161,9 @@ def apply_false_color_settings(useShader = 1):
 def render_false_color_image(width, height, filename=''):
     global tmpdir
 
-    tmpFile = get_temporary_file(filename)
-
     # draw with antialiasing disabled
-    cmd.draw(width, height, 0)
-    cmd.png(tmpFile)
-    while not os.path.exists(tmpFile):
-        time.sleep(1)
+    cmd.draw(width, height, antialias = 0)
 
-    if DEBUG:
-        print "created temporary file %s" % tmpFile
-
-    return tmpFile
 
 def get_temporary_file(filename=''):
     global tmpdir
@@ -192,6 +187,7 @@ def sample_viewpoint_entropy(views, selection='all', by='residues', width=512, h
     if DEBUG:
         keepFile = 'debug'
 
+    cmd.set('pick_shading')
     e = []
     for view in views:
 
@@ -510,15 +506,13 @@ def image_area(image):
 
 def image_entropy(image):
     """compute the entropy of an image"""
-
-    size = image.size[0]*image.size[1]
-    imgColors = image.getcolors(size)
-    colorCount = len(imgColors)
+    color_count = Counter([tuple(colors) for i in image for colors in i])
+    size = image.shape[0] * image.shape[1]
 
     if DEBUG:
-        print "found %i different colors" % colorCount
+        print "found %i different colors" % len(color_count)
 
-    samples_probability = [float(count) / size for (count, color) in imgColors]
+    samples_probability = [float(count) / size for count in color_count.values()]
 
     e = entropy(samples_probability)
 
@@ -624,13 +618,26 @@ def rotation_to(a, b):
         out = quat(1 + dot, tmpVec3[0], tmpVec3[1], tmpVec3[2])
         return out.normalize()
 
+def PIL2array(img):
+    return np.array(img.getdata(),
+                    np.uint8).reshape(img.size[1], img.size[0], 3)
+
+def array2PIL(arr, size):
+    mode = 'RGBA'
+    arr = arr.reshape(arr.shape[0]*arr.shape[1], arr.shape[2])
+    if len(arr[0]) == 3:
+        arr = np.c_[arr, 255*np.ones((len(arr),1), np.uint8)]
+    return Image.frombuffer(mode, size, arr.tostring(), 'raw', mode, 0, 1)
+
 # FIXME: shouldn't use globals
 counter = 0
 colors = {}
 tmpdir = "."
 settings_stack = []
 sessionfiles = []
+last_entropy = None
 
+cmd.raw_image_callback = capture_image
 
 cmd.extend('best_view', best_view)
 if DEBUG:
