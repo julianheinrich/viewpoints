@@ -144,12 +144,10 @@ def compute_viewpoint_entropy(features, view, width, height, keepFile=''):
 def capture_image(img):
     global last_entropy
 
-    print(img.shape)
     last_entropy = image_entropy(img)
-    print(last_entropy)
 
-    #if DEBUG:
-    #    print('entropy: ' + entropy);
+    if DEBUG:
+        print('entropy: ' + last_entropy)
     
 
 def apply_false_color_settings(useShader = 1):
@@ -461,33 +459,6 @@ def cleanup():
     """remove all temporary data"""
     if not DEBUG:
         rmtree(tmpdir)
-
-def compute_image_entropy(image):
-    global colors
-    maxcolors = image.size[0]*image.size[1]
-    print maxcolors
-    imgColors = image.getcolors(maxcolors)
-    print "found %i different colors for size %i" % (len(imgColors), maxcolors)
-
-    used = 0
-    e = 0
-    N = log(maxcolors, 2)
-
-    for count, color in imgColors:
-        r = color[0]
-        g = color[1]
-        b = color[2]
-        col_name = '0x%02x%02x%02x' % (r, g, b)
-        if col_name in colors:
-            if count > 0:
-                # if DEBUG:
-                #print "found " + str(count) + " pixels of colour " + col_name
-                e = e + count * (log(count, 2) - N)
-            used = used + 1
-    
-    e = -e / maxcolors
-    #print 'e: ' , e, " from ", str(used), " features"
-    return e
 
 # assumes black background!!!
 def image_area(image):
