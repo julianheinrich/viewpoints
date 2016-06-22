@@ -429,6 +429,9 @@ def best_view(selection='all', by='residues', n=10, width=100, height=100, ray=0
 
 
 def set_best_view(features, results):
+    '''
+    callback to set the best view from image capture results
+    '''
     ret = []
 
     maxi = -1.0;
@@ -580,26 +583,6 @@ def image_area(image):
     area = float(area)/float(size)
     ret = (area, len(imgColors))
     return ret
-
-def image_entropy(image):
-    """compute the entropy of an image"""
-    color_count = Counter([tuple(colors) for i in image for colors in i])
-    size = image.shape[0] * image.shape[1]
-
-    if DEBUG:
-        print "found %i different colors" % len(color_count)
-
-    samples_probability = [float(count) / size for count in color_count.values()]
-
-    e = entropy(samples_probability)
-
-    if DEBUG:
-        print "image entropy is: ", e
-
-    return e
-    
-def entropy(samples_probability):
-    return -sum([p * log(p, 2) for p in samples_probability])
 
 def hammersley_points(n):
     '''computes hammersley points on the unit sphere'''
