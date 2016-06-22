@@ -118,10 +118,14 @@ class ImageSampler:
         # self.task_id += 1
 
 
-    def image_entropy(self, image):
+    def image_entropy(self, img):
         """compute the entropy of an image"""
-        color_count = Counter([tuple(colors) for i in image for colors in i])
-        size = image.shape[0] * image.shape[1]
+        size = img.shape[0] * img.shape[1]
+
+        img.resize((size, 4))
+        img_flat = img[:,0] + img[:,1] * 256 + img[:,2] * 65536
+        color_count = Counter(img_flat)
+        
 
         if DEBUG:
             print "found %i different colors" % len(color_count)
