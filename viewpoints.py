@@ -17,77 +17,105 @@ from collections import namedtuple, Counter
 import cv2
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
+from threading import Thread, Condition, Lock
+from Queue import Queue, Empty
+import logging
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s (%(threadName)-2s) %(message)s',
+                    )
+
+# GLOBALS
 
 DEBUG = True
+counter = 0
+colors = {}
+tmpdir = "."
+settings_stack = []
+sessionfiles = []
+images = []
+image_mask = None
+image_queue = Queue()
+entropy_queue = Queue()
+condition = Condition()
+entropies = []
+lock = Lock()
 
 FALSE_COLOR_SETTINGS = {
 #    'cartoon_discrete_colors': 1,
 #    'cartoon_use_shader': 1,
-#    'orthoscopic': 1,
-    'pick_shading': 1
-    # 'bg_rgb': 'black' # breaks with dangling pointer
+    'orthoscopic': 1,
+    'pick_shading': 1,
+    'bg_rgb': 'black'
 }
 
 
-class ViewpointEntropySampler:
+class ImageSampler:  
 
-    def __init__(self, views, feature_count, width, height, keepFile):
+    def run(self, views, width, height, features, keepFile, callback = None):
         # init state
-        self.results = []
-        self.view_id = -1
         self.views = views
-        self.feature_count = feature_count
         self.width = width
         self.height = height
+        self.features = features
         self.keepFile = keepFile
+        self.callback = callback
         self.pick_shading = 0
-
-    def sample(self):
-        self.done = False
-
-        # flat shading (patched PyMOL)
-        #self.pick_shading = cmd.get_setting_int('pick_shading')
-        cmd.set('pick_shading')
+        self.task_id = 0
+        self.results = []
+       
+        if len(self.views) == 0:
+            print "need to set at least one view"
+            return
 
         # setup callback
         cmd.raw_image_callback = self.capture_image
+
+        # flat shading (patched PyMOL)
+        self.pick_shading = cmd.get_setting_int('pick_shading')
+        cmd.set('pick_shading')
 
         # start the recursion
         self.next()
 
     def cleanup(self):
-        #cmd.raw_image_callback = None
-        cmd.set('pick_shading', self.pick_shading)
-        self.done = True
+        cmd.raw_image_callback = None
+        cmd.set('pick_shading', False)
+        
+        if self.callback is not None:
+            self.callback(self.features, self.results)
 
     def capture_image(self, img):
         '''
         callback, gets called after cmd.draw
         '''
+        logging.debug('capturing view %i', self.task_id)
+        e = self.image_entropy(img)
+        self.results.append((self.views[self.task_id], e))
 
-        # store results
-        self.results.append((self.views[self.view_id], self.image_entropy(img)))
-
-        # recursion
+        self.task_id += 1
         self.next()
-
+        
     def next(self):
         '''
         set up the next task and render one image
         '''
 
-        if self.view_id >= len(self.views) - 1:
-            self.set_best_view()
+        if self.task_id >= len(self.views):
             self.cleanup()
 
-        else:
-            self.view_id += 1
+            # report results
+            logging.debug('done')
+            return
 
-#            print 'now setting id:', self.view_id
-            cmd.set_view(self.views[self.view_id])
+        # set view
+        logging.debug('setting view: %i', self.task_id)
+        cmd.set_view(self.views[self.task_id])
 
-            # render image
-            cmd.draw(self.width, self.height, antialias=0)
+        # render image
+        cmd.draw(self.width, self.height, antialias=0)
+
+        # self.task_id += 1
 
 
     def image_entropy(self, image):
@@ -110,18 +138,6 @@ class ViewpointEntropySampler:
     def entropy(self, samples_probability):
         return -sum([p * log(p, 2) for p in samples_probability])
 
-    def get_entropies(self):
-        return self.results
-
-    def set_best_view(self):
-        maxi = -1.0;
-        best_view = None
-        for view, entropy in self.results:
-           if entropy > maxi:
-               maxi = entropy
-               best_view = view
-
-        cmd.set_view(best_view)
 
 
 def viewpoint_entropy(selection='all', by='residues', view=None, width=512, height=512, keepFile=''):
@@ -161,14 +177,9 @@ EXAMPLES
     feature_count = assign_colors(selection, by)
 
     apply_false_color_settings()
-    e = compute_viewpoint_entropy(feature_count, view, width, height, keepFile)
+    compute_viewpoint_entropy(feature_count, view, width, height, keepFile)
 
-    pop()
-
-    if DEBUG:
-        print "Viewpoint Entropy is: %f" % e 
-    return e
-
+    #pop()
 
 def assign_colors(selection, by='residues'):
     '''
@@ -216,33 +227,38 @@ def assign_colors(selection, by='residues'):
         print "number of features: ", counter
     return counter
 
+def print_results(features, results):
+
+    for result in results:
+
+        e = result[1]
+        # normalize by number of features
+        e /= log(features + 1, 2)
+        print 'viewpoint entropy: ', e
+
 # apply_false_color_settings() has to be called before running this function
-def compute_viewpoint_entropy(features, view, width, height, keepFile=''):
-    global last_entropy
+def compute_viewpoint_entropy(features, view, width, height, keepFile=''):    
+    logging.debug('compute_viewpoint_entropy')
+    global ist
 
     if view:
         cmd.set_view(view)
 
-    last_entropy = -1.0
-
-    # this call will invoke capture_image
-    cmd.draw(width, height, antialias = 0)
-
-    print last_entropy
-
-    e = 0.0
-    if last_entropy >= 0.0:
-        # normalize by number of features
-        e = last_entropy / log(features + 1, 2)
-
-    if DEBUG:
-        print "viewpoint entropy is: ", e
-    return e
+    ist.run([view], width, height, features, False, print_results)
 
 def capture_image(img):
-    global last_entropy
+    global entropy_queue
+    global condition
 
-    last_entropy = image_entropy(img)
+    print 'image captured'
+    return
+
+    condition.acquire()
+    e = image_entropy(img)
+    print 'putting entropy ', e
+    entropy_queue.put(e)
+    condition.notify()
+    condition.release()
 
 def apply_false_color_settings():
 
@@ -265,7 +281,6 @@ def get_temporary_file(filename=''):
 
 
 def sample_viewpoint_entropy(views, selection='all', by='residues', width=512, height=512):
-
     # formalise parameters
     width, height = int(width), int(height)
 
@@ -276,18 +291,18 @@ def sample_viewpoint_entropy(views, selection='all', by='residues', width=512, h
     if DEBUG:
         keepFile = 'debug'
 
-    sampler = ViewpointEntropySampler(views, feature_count, width, height, keepFile)
-    sampler.sample()
+    #sampler = ViewpointEntropySampler(views, feature_count, width, height, keepFile)
+    #sampler.sample()
 
     # return sampler.get_entropies()
 
-    # e = []
-    # for view in views:
+    e = []
+    for view in views:
 
-    #     entropy = compute_viewpoint_entropy(feature_count, view, width, height, keepFile)
-    #     e.append((view, entropy))
-        
-    # return e
+        entropy = compute_viewpoint_entropy(feature_count, view, width, height, keepFile)
+        e.append((view, entropy))
+
+    return e
 
 def get_views(points):
     ''' computes view matrices from points.
@@ -384,12 +399,12 @@ def get_rotation(view):
     return rot
 
 
-def best_view(selection='all', by='residues', n=10, width=512, height=512, ray=0, prefix='', add_PCA = False):
+def best_view(selection='all', by='residues', n=10, width=100, height=100, ray=0, prefix='', add_PCA = False):
     # formalise parameters
     width, height, n = int(width), int(height), int(n)
     selection = str(selection)
 
-    #push()
+    push()
 
     # sample points on sphere
     points = hammersley_points(n)
@@ -407,25 +422,24 @@ def best_view(selection='all', by='residues', n=10, width=512, height=512, ray=0
     #     cmd.zoom('all', 2.0, 0, 1)
 
     views = get_views(points)
+    features = assign_colors(selection, by)
+    apply_false_color_settings()
 
-    # compute attributes
-    sample_viewpoint_entropy([view for (point, view) in views], selection, by, width, height)
+    ist.run([view for (point, view) in views], width, height, features, False, set_best_view)
 
-    # ret = []
 
-    # basename = string.replace(selection," ","_")
+def set_best_view(features, results):
+    ret = []
 
-    #maxi = -1.0;
-    #best_view = None
-    #for view, entropy in entropies:
-    #    if entropy > maxi:
-    #        maxi = entropy
-    #        best_view = view
+    maxi = -1.0;
+    best_view = None
+    for view, entropy in results:
+       if entropy > maxi:
+           maxi = entropy
+           best_view = view
 
-    #pop()    
-
-    #cmd.set_view(best_view)
-    #return best_view
+    cmd.set_view(best_view)
+    pop()
 
 
 def get_PCA_views(selection):
@@ -494,8 +508,7 @@ def push_session():
     if not os.path.isfile(sessionfile):
         cmd.save(sessionfile)
         sessionfiles.append(sessionfile)
-        if DEBUG:
-            print "pushing ", sessionfile
+        logging.debug("pushing %s", sessionfile)
 
     # store current colors
     #stored.color_list = []
@@ -513,8 +526,7 @@ def pop_session():
         else:
             print "SESSION STACK CORRUPTED!"
 
-        if DEBUG:
-            print "popping ", sessionfile
+        logging.debug("popping %s", sessionfile)
     else:
         cleanup()
 
@@ -546,7 +558,7 @@ def pop():
             cmd.set(key, settings[key])
 
         if DEBUG:
-            print "setting configuration ", settings
+            print "restoring configuration ", settings
 
 
 def cleanup():
@@ -697,16 +709,8 @@ def array2PIL(arr, size):
         arr = np.c_[arr, 255*np.ones((len(arr),1), np.uint8)]
     return Image.frombuffer(mode, size, arr.tostring(), 'raw', mode, 0, 1)
 
-# FIXME: shouldn't use globals
-counter = 0
-colors = {}
-tmpdir = "."
-settings_stack = []
-sessionfiles = []
-last_entropy = None,
-image_mask = None
 
-cmd.raw_image_callback = capture_image
+ist = ImageSampler()
 
 cmd.extend('best_view', best_view)
 
