@@ -93,6 +93,10 @@ class ImageSampler:
         e = self.image_entropy(img)
         self.results.append((self.views[self.task_id], e))
 
+        # if (len(self.keepFile)):
+        #     im = Image.fromarray(img)
+        #     im.save(self.keepFile + str(self.task_id) + ".png")
+
         self.task_id += 1
         self.next()
         
@@ -148,8 +152,8 @@ def viewpoint_entropy(selection='all', by='residues', view=None, width=512, heig
     '''
 DESCRIPTION
  
-    Computes the viewpoint entropy of 'selection' from the given 'view' by rendering the scene to a file of 
-    the given dimensions. Keeps the file if 'keepFile' is set to true.
+    Computes the viewpoint entropy of 'selection' from the given 'view' by rendering the scene to an image of 
+    the given dimensions.
     If no 'view' is given, uses the current view.
     The viewpoint entropy can be computed either by secondary structure ('ss'), by 'residues' or by 'atoms'.
 
@@ -161,7 +165,7 @@ AUTHOR
  
 USAGE
  
-    viewpoint_entropy selection=string, width=int, height=int
+    viewpoint_entropy selection=string, by='residues|ss|atoms', view=[...], width=int, height=int
  
 EXAMPLES
  
@@ -240,34 +244,21 @@ def print_results(features, results):
         e /= log(features + 1, 2)
         print 'viewpoint entropy: ', e
 
+    pop()
+
 # apply_false_color_settings() has to be called before running this function
 def compute_viewpoint_entropy(features, view, width, height, keepFile=''):    
-    logging.debug('compute_viewpoint_entropy')
     global ist
 
     if view:
         cmd.set_view(view)
 
-    ist.run([view], width, height, features, False, print_results)
+    ist.run([view], width, height, features, keepFile, print_results)
 
-def capture_image(img):
-    global entropy_queue
-    global condition
-
-    print 'image captured'
-    return
-
-    condition.acquire()
-    e = image_entropy(img)
-    print 'putting entropy ', e
-    entropy_queue.put(e)
-    condition.notify()
-    condition.release()
 
 def apply_false_color_settings():
 
-    if DEBUG:
-        print "setting configuration ", FALSE_COLOR_SETTINGS
+    logging.debug("setting configuration ", FALSE_COLOR_SETTINGS)
 
     for key in FALSE_COLOR_SETTINGS:
         value = FALSE_COLOR_SETTINGS[key]
@@ -418,13 +409,6 @@ def best_view(selection='all', by='residues', n=10, width=100, height=100, ray=0
         points.append(pca1)
         points.append(pca2)
 
-    # if DEBUG:
-    #     # works only in this order for some reason...
-    #     show_points(points, [1.0, 0.0, 0.0], selection)
-    #     draw_up_vector(selection=selection)
-    #     cmd.set("ray_trace_mode", '1')
-    #     cmd.zoom('all', 2.0, 0, 1)
-
     views = get_views(points)
     features = assign_colors(selection, by)
     apply_false_color_settings()
@@ -445,8 +429,8 @@ def set_best_view(features, results):
            maxi = entropy
            best_view = view
 
-    cmd.set_view(best_view)
     pop()
+    cmd.set_view(best_view)
 
 
 def get_PCA_views(selection):
@@ -470,12 +454,12 @@ def get_PCA_views(selection):
     return (preferred1, preferred2)
 
 
-
 def spherical_distance(a, b):
     avec = vec3(a).normalize()
     bvec = vec3(b).normalize()
     # return acos(avec.normalize() * bvec.normalize())
     return atan2(avec.cross(bvec).length(), avec * bvec)
+
 
 def sample_and_show_points(selection='all', n=10, attribute = 'viewpoint_entropy', by='ss', width=512, height=512, keepFile = ''):
     #push()
@@ -564,8 +548,7 @@ def pop():
         for key in settings:
             cmd.set(key, settings[key])
 
-        if DEBUG:
-            print "restoring configuration ", settings
+        logging.debug("restoring configuration")
 
 
 def cleanup():
