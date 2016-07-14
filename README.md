@@ -39,3 +39,18 @@ Best views can be determined by *residues*, secondary structure (*ss*), *atoms*,
 The more samples *n* are specified, the more different camera positions are evaluated and the one with the highest score (currently: the viewpoint entropy) is chosen as the best view.
 
 ## Examples
+A simple example that demonstrates the best view based on a selection of chains:
+
+```
+run viewpoints.py
+fetch 3kmz
+assign_colors chain
+orient
+```
+![3kmz](examples/3kmz/3kmz_chains_pca.png)
+
+```
+best_view chain C+D, chain, 100, 512, 512
+```
+
+![3kmz](examples/3kmz/3kmz_chains_C_D_vp.png)
