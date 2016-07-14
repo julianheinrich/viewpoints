@@ -12,23 +12,18 @@ The scripts currently depend on [cgkit light](http://cgkit.sourceforge.net/doc2/
 
 ## Installation
 
-
+1. Patch and recompile PyMOL
 2. Clone the repository
-
 ```
 git clone https://github.com/julianheinrich/viewpoints.git
 ```
-
 3. Start PyMOL and load the viewpoints script
-
 ```
 run viewpoints.py
 ```
-
 4. Load a structure and run 
-
 ```
-best_view all, residue, 100
+best_view all, residues, 100
 ```
 
 ## Usage
@@ -42,3 +37,5 @@ best_view(selection='all', by='residues', n=10, width=512, height=512, ray=0, pr
 Best views can be determined by *residues*, secondary structure (*ss*), *atoms*, or *chain*. 
 
 The more samples *n* are specified, the more different camera positions are evaluated and the one with the highest score (currently: the viewpoint entropy) is chosen as the best view.
+
+## Examples
