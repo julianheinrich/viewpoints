@@ -1,28 +1,31 @@
 # Viewpoints for Molecular Structres in PyMOL
 
+__This is an experimental branch that requires a patched version of PyMOL (see below)__
+
 This is a collection of python scripts to determine good views of macromolecular structures with PyMOL. 
 
 Currently, the scripts use a random sampling of points on a sphere with fixed radius from the center of mass of a selection to determine a set of candidate viewpoints. Then, the viewpoint with maximal viewpoint entropy is chosen as the 'best' viewpoint. 
 
 ## Dependencies
 
-The scripts currently depend on [cgkit light](http://cgkit.sourceforge.net/doc2/introduction.html#cgkit-light).
+The scripts currently depend on [cgkit light](http://cgkit.sourceforge.net/doc2/introduction.html#cgkit-light) as well as a patched version of PyMOL.
 
 ## Installation
 
-1. Clone the repository
+
+2. Clone the repository
 
 ```
 git clone https://github.com/julianheinrich/viewpoints.git
 ```
 
-2. Start PyMOL and load the viewpoints script
+3. Start PyMOL and load the viewpoints script
 
 ```
 run viewpoints.py
 ```
 
-3. Load a structure and run 
+4. Load a structure and run 
 
 ```
 best_view all, residue, 100
