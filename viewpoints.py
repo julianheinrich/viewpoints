@@ -28,18 +28,18 @@ logging.basicConfig(level=logging.DEBUG,
 # GLOBALS
 
 DEBUG = True
-counter = 0
-colors = {}
+# counter = 0
+# colors = {}
 tmpdir = "."
 settings_stack = []
 sessionfiles = []
-images = []
-image_mask = None
-image_queue = Queue()
-entropy_queue = Queue()
-condition = Condition()
-entropies = []
-lock = Lock()
+# images = []
+# image_mask = None
+# image_queue = Queue()
+# entropy_queue = Queue()
+# condition = Condition()
+# entropies = []
+# lock = Lock()
 
 FALSE_COLOR_SETTINGS = {
 #    'cartoon_discrete_colors': 1,
@@ -204,8 +204,7 @@ def assign_colors(selection, by='residues'):
     increment = 1
     previous = 'hfjkdasnck12dd32' # pseudo-random
 
-    if DEBUG:
-        print "coloring by ", by
+    logging.debug("coloring by %s", by)
 
     for (model, chain, ss, resi, name) in stored.atoms:
         if by == 'atoms':
