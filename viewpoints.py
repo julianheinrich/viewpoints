@@ -50,7 +50,7 @@ FALSE_COLOR_SETTINGS = {
 }
 
 
-class ImageSampler:  
+class ImageSampler:
 
     def run(self, views, width, height, features, keepFile, callback = None):
         # init state
@@ -63,7 +63,7 @@ class ImageSampler:
         self.pick_shading = 0
         self.task_id = 0
         self.results = []
-       
+
         if len(self.views) == 0:
             print "need to set at least one view"
             return
@@ -81,7 +81,7 @@ class ImageSampler:
     def cleanup(self):
         cmd.raw_image_callback = None
         cmd.set('pick_shading', False)
-        
+
         if self.callback is not None:
             self.callback(self.features, self.results)
 
@@ -99,7 +99,7 @@ class ImageSampler:
 
         self.task_id += 1
         self.next()
-        
+
     def next(self):
         '''
         set up the next task and render one image
@@ -129,7 +129,7 @@ class ImageSampler:
         img.resize((size, 4))
         img_flat = img[:,0] + img[:,1] * 256 + img[:,2] * 65536
         color_count = Counter(img_flat)
-        
+
 
         if DEBUG:
             print "found %i different colors" % len(color_count)
@@ -142,7 +142,7 @@ class ImageSampler:
             print "image entropy is: ", e
 
         return e
-    
+
     def entropy(self, samples_probability):
         return -sum([p * log(p, 2) for p in samples_probability])
 
@@ -151,27 +151,27 @@ class ImageSampler:
 def viewpoint_entropy(selection='all', by='residues', view=None, width=512, height=512, keepFile=''):
     '''
 DESCRIPTION
- 
-    Computes the viewpoint entropy of 'selection' from the given 'view' by rendering the scene to an image of 
+
+    Computes the viewpoint entropy of 'selection' from the given 'view' by rendering the scene to an image of
     the given dimensions.
     If no 'view' is given, uses the current view.
     The viewpoint entropy can be computed either by secondary structure ('ss'), by 'residues' or by 'atoms'.
 
 
 AUTHOR
- 
+
     Julian Heinrich
     julian@joules.de
- 
+
 USAGE
- 
+
     viewpoint_entropy selection=string, by='residues|ss|atoms', view=[...], width=int, height=int
- 
+
 EXAMPLES
- 
+
     viewpoint_entropy n.CA, 1024, 768
     '''
-    
+
     push()
 
     # formalise parameters
@@ -223,7 +223,7 @@ def assign_colors(selection, by='residues'):
                 previous = chain
 
         # alternating colors from both ends of the spectrum
-        stored.index.append(counter if counter % 2 else -counter) 
+        stored.index.append(counter if counter % 2 else -counter)
 
     cmd.alter(selection, 'b = stored.index.pop(0)')
 
@@ -246,7 +246,7 @@ def print_results(features, results):
     pop()
 
 # apply_false_color_settings() has to be called before running this function
-def compute_viewpoint_entropy(features, view, width, height, keepFile=''):    
+def compute_viewpoint_entropy(features, view, width, height, keepFile=''):
     global ist
 
     if view:
@@ -315,7 +315,7 @@ def get_views(points):
 
     e = []
     for point in points:
-        
+
         # find rotation matrix R to the new point
         spn = vec3(point).normalize()
         q = rotation_to(spn, cam)
@@ -345,13 +345,13 @@ def get_views(points):
         RRR.setRow(0, right)
         RRR.setRow(1, up)
         RRR.setRow(2, new_cam)
-        
+
         new_view = []
         new_view.extend(RRR.toList())
         new_view.extend(view[9:18])
 
         e.append((point, new_view))
-        
+
     setEpsilon(epsilon)
 
     return e
@@ -402,7 +402,7 @@ def best_view(selection='all', by='residues', n=10, width=100, height=100, ray=0
 
     # sample points on sphere
     points = hammersley_points(n)
-    
+
     if add_PCA:
         (pca1, pca2) = get_PCA_views(selection)
         points.append(pca1)
@@ -412,12 +412,14 @@ def best_view(selection='all', by='residues', n=10, width=100, height=100, ray=0
     features = assign_colors(selection, by)
     apply_false_color_settings()
 
+    # run image sampler for all viewpoints with 'set_best_view' as callback
     ist.run([view for (point, view) in views], width, height, features, False, set_best_view)
 
 
 def set_best_view(features, results):
     '''
     callback to set the best view from image capture results
+    also pops the settings stack
     '''
     ret = []
 
@@ -438,7 +440,7 @@ def get_PCA_views(selection):
     cmd.orient(selection)
     view = cmd.get_view(quiet=1)
     rot = get_rotation_from_view(view)
-    
+
     # now rot resembles view
     pc3 = rot.getRow(2)
     pc1 = rot.getRow(0)
@@ -492,7 +494,7 @@ def push_session():
             tmpdir = mkdtemp()
         else:
             tmpdir = "."
- 
+
     sessionfile = "%s/session_%i.pse" % (tmpdir, len(sessionfiles))
 
     if not os.path.isfile(sessionfile):
@@ -565,7 +567,7 @@ def image_area(image):
     for count, color in imgColors:
         if color != bg:
             area += count
-    
+
     area = float(area)/float(size)
     ret = (area, len(imgColors))
     return ret
@@ -580,7 +582,7 @@ def hammersley_points(n):
         while kk > 0:
             if (kk & 1):
                 t += p
-            p *= 0.5 
+            p *= 0.5
             kk >>= 1
 
         t = 2.0 * t - 1.0
@@ -628,7 +630,7 @@ def show_points(points, color = [1.0, 0.0, 0.0], selection='all', name = 'sample
     i = 0.0
     j = 0
     for p in points:
-        
+
         #spheres.extend([COLOR, 1.0, 1 - scaled_value, 1 - scaled_value])
         spheres.extend([SPHERE, o[0]+r*p[0], o[1]+r*p[1], o[2]+r*p[2], 1.25])
         #drawVector(o, o + r * vec3(p))
@@ -636,7 +638,7 @@ def show_points(points, color = [1.0, 0.0, 0.0], selection='all', name = 'sample
         #i += 1.0/len(values)
         l = 1.1
         if (len(labels) > j):
-            cmd.pseudoatom(labels[j] + "_label", pos = [o[0]+l * r*p[0], o[1]+l*r*p[1], o[2]+l*r*p[2], 1.25], label = labels[j])    
+            cmd.pseudoatom(labels[j] + "_label", pos = [o[0]+l * r*p[0], o[1]+l*r*p[1], o[2]+l*r*p[2], 1.25], label = labels[j])
 
         j += 1
 
