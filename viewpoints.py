@@ -3,7 +3,7 @@ from pymol.cgo import *
 from PIL import Image
 from tempfile import mkdtemp
 from shutil import rmtree
-from math import sin,cos,pi,sqrt,log,acos,degrees,acos,atan2
+from math import sin,cos,pi,sqrt,log,acos,degrees,acos,atan2,floor
 import os.path
 import time
 import string
@@ -20,6 +20,7 @@ from scipy.spatial import ConvexHull, Delaunay
 from threading import Thread, Condition, Lock
 from Queue import Queue, Empty
 import logging
+from sklearn.cluster import MeanShift, estimate_bandwidth
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s (%(threadName)-2s) %(message)s',
@@ -392,8 +393,69 @@ def get_rotation(view):
     # matrix which rotates model axes to camera axes
     return rot
 
+def set_best_view_cb(features, results):
+    '''
+    callback to set the best view from image capture results
+    also pops the settings stack
+    '''
+    ret = []
 
-def set_best_view(selection='all', by='residues', n=10, width=100, height=100, ray=0, prefix='', add_PCA = False, animate = False):
+    maxi = -1.0;
+    best_view = None
+    for view, entropy in results:
+       if entropy > maxi:
+           maxi = entropy
+           best_view = view
+
+    pop()
+    cmd.set_view(best_view)
+
+def show_tour_cb(features, results):
+    # format entropies as array of arrays for estimate_bandwidth
+    entropies = np.array([entropy for view, entropy in results]).reshape(-1, 1)
+    bandwidth = estimate_bandwidth(entropies)
+    ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
+    ms.fit(entropies)
+    labels = ms.labels_
+    centers = ms.cluster_centers_.reshape(1, -1)[0]
+    labels_unique = np.unique(labels)
+    n_clusters = len(labels_unique)
+
+    # find closest view to each center
+    views = []
+    for center in centers:
+        d = 10 # maximum distance can be 1.0 by construction
+        v = None
+        for view, entropy in results:
+            dd = abs(entropy - center)
+            if dd < d:
+                d = dd
+                v = view
+        views.append(v)
+
+    logging.debug(views)
+
+    pop()
+
+    n_frames = 100
+    cmd.mset("1 x100", 1)
+
+    cmd.set_view(views[0])
+    cmd.mview("store", 1)
+    cmd.mview("store", 100)
+
+    step = floor(n_frames/len(views))
+    for i, view in enumerate(views[1:]):
+        cmd.set_view(view)
+        frame = (i + 1) * step
+        logging.debug("setting view for frame " + str(frame))
+        #logging.debug(view)
+        cmd.mview("store", frame)
+
+    cmd.mplay()
+
+
+def set_best_view(selection='all', by='residues', n=10, width=100, height=100, ray=0, prefix='', add_PCA = False, cb = set_best_view_cb):
     # formalise parameters
     width, height, n = int(width), int(height), int(n)
     selection = str(selection)
@@ -412,27 +474,12 @@ def set_best_view(selection='all', by='residues', n=10, width=100, height=100, r
     features = assign_colors(selection, by)
     apply_false_color_settings()
 
-    # run image sampler for all viewpoints with 'set_best_view' as callback
-    cb = transition_to_best_view_cb if animate else set_best_view_cb
+    # run image sampler for all viewpoints with cb as callback
+    #cb = transition_to_best_view_cb if animate else set_best_view_cb
     ist.run([view for (point, view) in views], width, height, features, False, cb)
 
-
-def set_best_view_cb(features, results):
-    '''
-    callback to set the best view from image capture results
-    also pops the settings stack
-    '''
-    ret = []
-
-    maxi = -1.0;
-    best_view = None
-    for view, entropy in results:
-       if entropy > maxi:
-           maxi = entropy
-           best_view = view
-
-    pop()
-    cmd.set_view(best_view)
+def tour(selection='all', by='residues', n=10, width=100, height=100):
+    set_best_view(selection, by, n, width, height, 0, '', False, cb=show_tour_cb)
 
 
 def get_PCA_views(selection):
@@ -685,6 +732,7 @@ def array2PIL(arr, size):
 ist = ImageSampler()
 
 cmd.extend('set_best_view', set_best_view)
+cmd.extend('show_tour', tour)
 
 if DEBUG:
     cmd.extend('viewpoint_entropy', viewpoint_entropy)
