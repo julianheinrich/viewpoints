@@ -23,7 +23,7 @@ run viewpoints.py
 ```
 4. Load a structure and run 
 ```
-best_view all, residues, 100
+set_best_view all, residues, 100
 ```
 
 ## Usage
@@ -31,7 +31,7 @@ best_view all, residues, 100
 The script currently exposes a single command:
 
 ```
-best_view(selection='all', by='residues', n=10, width=512, height=512, ray=0, prefix='', add_PCA = False)
+set_best_view(selection='all', by='residues', n=10, width=512, height=512, ray=0, prefix='', add_PCA = False)
 ```
 
 Best views can be determined by *residues*, secondary structure (*ss*), *atoms*, or *chain*. 
@@ -50,7 +50,7 @@ orient
 ![3kmz](examples/3kmz/3kmz_chains_pca.png)
 
 ```
-best_view chain C+D, chain, 100, 512, 512
+set_best_view chain C+D, chain, 100, 512, 512
 ```
 
 ![3kmz](examples/3kmz/3kmz_chains_C_D_vp.png)
@@ -66,8 +66,31 @@ color red, organic
 ```
 ![2b50](examples/2b50/2b50_default.png)
 ```
-best_view organic, atoms, 100, 640, 480
+set_best_view organic, atoms, 100, 640, 480
 ```
 
 ![2b50](examples/2b50/2b50_ligand.png)
 
+### Animate the transition to the best view as a movie
+```
+# same as in the previous example
+run viewpoints.py
+fetch 2b50, async=0
+as surface
+color green
+as sticks, organic
+color red, organic
+
+# create an empty 90 frame movie
+mset 1 x90
+# store the current view as the first frame
+frame 1
+mview store
+# now set the best view for the last frame
+frame 90
+set_best_view organic, atoms, 100, 640, 480
+mview store
+
+# finally, play the movie
+mplay
+```

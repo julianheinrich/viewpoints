@@ -393,7 +393,7 @@ def get_rotation(view):
     return rot
 
 
-def best_view(selection='all', by='residues', n=10, width=100, height=100, ray=0, prefix='', add_PCA = False):
+def set_best_view(selection='all', by='residues', n=10, width=100, height=100, ray=0, prefix='', add_PCA = False, animate = False):
     # formalise parameters
     width, height, n = int(width), int(height), int(n)
     selection = str(selection)
@@ -413,10 +413,11 @@ def best_view(selection='all', by='residues', n=10, width=100, height=100, ray=0
     apply_false_color_settings()
 
     # run image sampler for all viewpoints with 'set_best_view' as callback
-    ist.run([view for (point, view) in views], width, height, features, False, set_best_view)
+    cb = transition_to_best_view_cb if animate else set_best_view_cb
+    ist.run([view for (point, view) in views], width, height, features, False, cb)
 
 
-def set_best_view(features, results):
+def set_best_view_cb(features, results):
     '''
     callback to set the best view from image capture results
     also pops the settings stack
@@ -683,7 +684,7 @@ def array2PIL(arr, size):
 
 ist = ImageSampler()
 
-cmd.extend('best_view', best_view)
+cmd.extend('set_best_view', set_best_view)
 
 if DEBUG:
     cmd.extend('viewpoint_entropy', viewpoint_entropy)
