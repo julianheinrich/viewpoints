@@ -72,11 +72,11 @@ class ImageSampler:
         # setup callback
         cmd.raw_image_callback = self.capture_image
 
-        # flat shading (patched PyMOL)
+        # flat shading (requires patched PyMOL)
         self.pick_shading = cmd.get_setting_int('pick_shading')
         cmd.set('pick_shading')
 
-        # start the recursion
+        # start recursion
         self.next()
 
     def cleanup(self):
@@ -379,7 +379,6 @@ def draw_up_vector(radius=1.0, rgb=[1.0, 1.0, 1.0], selection='all'):
 
     c = com.COM(selection)
     cvec = vec3(c)
-    #cvec = vec3(view[12:15])
 
     drawVector(cvec, cvec + r * model_up, name='up')
     drawVector(cvec, cvec + r * right, name='right', rgb=[1.0, 0.0, 0.0])
@@ -393,6 +392,23 @@ def get_rotation(view):
     # matrix which rotates model axes to camera axes
     return rot
 
+def make_movie(views, n_frames = 100):
+    cmd.mset("1 x100", 1)
+
+    cmd.set_view(views[0])
+    cmd.mview("store", 1)
+    cmd.mview("store", 100)
+
+    step = floor(n_frames/len(views))
+    for i, view in enumerate(views[1:]):
+        cmd.set_view(view)
+        frame = (i + 1) * step
+        logging.debug("setting view for frame " + str(frame))
+        cmd.mview("store", frame)
+
+    cmd.mplay()
+
+
 def set_best_view_cb(features, results):
     '''
     callback to set the best view from image capture results
@@ -400,17 +416,17 @@ def set_best_view_cb(features, results):
     '''
     ret = []
 
-    maxi = -1.0;
-    best_view = None
-    for view, entropy in results:
-       if entropy > maxi:
-           maxi = entropy
-           best_view = view
+    (best_view, high_entropy) = max(results, key=lambda result: result[1])
 
     pop()
     cmd.set_view(best_view)
 
-def show_tour_cb(features, results):
+def show_scenes_cb(features, results):
+    '''
+    Callback to create a set of scenes from the best views from image capture results.
+    Also pops the settings stack.
+    '''
+
     # format entropies as array of arrays for estimate_bandwidth
     entropies = np.array([entropy for view, entropy in results]).reshape(-1, 1)
     bandwidth = estimate_bandwidth(entropies)
@@ -437,23 +453,27 @@ def show_tour_cb(features, results):
 
     pop()
 
-    n_frames = 100
-    cmd.mset("1 x100", 1)
-
     cmd.set_view(views[0])
-    cmd.mview("store", 1)
-    cmd.mview("store", 100)
+    cmd.scene('new', 'store')
 
-    step = floor(n_frames/len(views))
     for i, view in enumerate(views[1:]):
         cmd.set_view(view)
-        frame = (i + 1) * step
-        logging.debug("setting view for frame " + str(frame))
-        #logging.debug(view)
-        cmd.mview("store", frame)
+        cmd.scene('new', 'store')
 
-    cmd.mplay()
+    # cmd.mset("1 x1", 1)
+    # cmd.set('scene_loop')
+    # cmd.set('movie_fps', 0.5)
+    # cmd.mdo(1, 'scene auto, next')
+    # cmd.mplay()
 
+def show_orbit_cb(features, results):
+
+    (view1, high_entropy) = max(results, key=lambda result: result[1])
+    (view2, low_entropy) = min(results, key=lambda result: result[1])
+
+    pop()
+
+    make_movie([view1, view2])
 
 def set_best_view(selection='all', by='residues', n=10, width=100, height=100, ray=0, prefix='', add_PCA = False, cb = set_best_view_cb):
     # formalise parameters
@@ -478,9 +498,11 @@ def set_best_view(selection='all', by='residues', n=10, width=100, height=100, r
     #cb = transition_to_best_view_cb if animate else set_best_view_cb
     ist.run([view for (point, view) in views], width, height, features, False, cb)
 
-def tour(selection='all', by='residues', n=10, width=100, height=100):
-    set_best_view(selection, by, n, width, height, 0, '', False, cb=show_tour_cb)
+def show_scenes(selection='all', by='residues', n=10, width=100, height=100):
+    set_best_view(selection, by, n, width, height, 0, '', False, cb=show_scenes_cb)
 
+def orbit(selection='all', by='residues', n=10, width=100, height=100):
+    set_best_view(selection, by, n, width, height, 0, '', False, cb=show_orbit_cb)
 
 def get_PCA_views(selection):
     old_view = cmd.get_view(quiet=1)
@@ -506,7 +528,7 @@ def get_PCA_views(selection):
 def spherical_distance(a, b):
     avec = vec3(a).normalize()
     bvec = vec3(b).normalize()
-    # return acos(avec.normalize() * bvec.normalize())
+    
     return atan2(avec.cross(bvec).length(), avec * bvec)
 
 
@@ -733,6 +755,7 @@ ist = ImageSampler()
 
 cmd.extend('set_best_view', set_best_view)
 cmd.extend('show_tour', tour)
+cmd.extend('orbit', orbit)
 
 if DEBUG:
     cmd.extend('viewpoint_entropy', viewpoint_entropy)
