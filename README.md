@@ -94,3 +94,25 @@ mview store
 # finally, play the movie
 mplay
 ```
+
+### Periodic Orbits
+Periodic orbits are camera orbits around a fixed axis, which is determined by the underlying algorithm. The resulting orbit will pass both low and high viewpoint-entropy views for the given selection. This ensures that both the composition of complexes (which often correspond to low-entropy viewpoints) as well as the overall structure (high entropy viewpoints) should be visible during the rotation:
+<img src='examples/2d1s/orbit.gif'></img>
+See [Periodic Orbit Example](examples/2d1s/Readme.md) for details.
+
+### Automatic Tours
+Automatic tours compute a set of viewpoints based on clustering the viewpoint entropy over all samples that were taken. The resulting viewpoints are thus different from each other, while each corresponds to a peak in the distribution of viewpoint entropies. Tours can be created either as a set of scenes:
+```
+fetch 1eri
+show_scenes selection=all, by=ss, n=100, width=512, height=512
+```
+which will result in four viewpoints:
+<img src='examples/1eri/1eri_01.png'></img>
+<img src='examples/1eri/1eri_02.png'></img>
+<img src='examples/1eri/1eri_03.png'></img>
+<img src='examples/1eri/1eri_04.png'></img>
+
+Alternatively, you can play a movie from the same scenes using
+```
+tour selection=all, by=ss, n=100, width=512, height=512
+```
