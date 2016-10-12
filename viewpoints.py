@@ -21,6 +21,7 @@ from threading import Thread, Condition, Lock
 from Queue import Queue, Empty
 import logging
 from sklearn.cluster import MeanShift, estimate_bandwidth
+import aquaria_colors
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s (%(threadName)-2s) %(message)s',
@@ -301,7 +302,7 @@ def sample_viewpoint_entropy(views, selection='all', by='residues', width=512, h
 
 def get_views(points):
     ''' computes view matrices from points.
-        assumes that the current view defines the up vector '''
+        assumes that the current view defines the up vector of the model '''
 
     view = cmd.get_view(quiet=not DEBUG)
     rot = get_rotation(view)
@@ -327,7 +328,6 @@ def get_views(points):
 
         # new camera coordinate system aligns
         # up vector with model_up vector
-        # new_cam = vec3(point).normalize()
         new_cam = RR.getRow(2).normalize()
         lookAt = -new_cam
         up = model_right.cross(lookAt).normalize()
@@ -365,7 +365,7 @@ def get_cam(view):
     return cam
 
 def draw_up_vector(radius=1.0, rgb=[1.0, 1.0, 1.0], selection='all'):
-    view = cmd.get_view(quiet=1)
+    view = cmd.get_view()
     rot = get_rotation_from_view(view)
     cam = rot.getRow(2).normalize()
     model_up = rot.getRow(1).normalize()
@@ -422,10 +422,10 @@ def set_best_view_cb(features, results):
     cmd.set_view(best_view)
 
 def show_scenes_cb(features, results):
-    '''
+    """
     Callback to create a set of scenes from the best views from image capture results.
     Also pops the settings stack.
-    '''
+    """
 
     # format entropies as array of arrays for estimate_bandwidth
     entropies = np.array([entropy for view, entropy in results]).reshape(-1, 1)
@@ -449,7 +449,7 @@ def show_scenes_cb(features, results):
                 v = view
         views.append(v)
 
-    logging.debug(views)
+    # logging.debug(views)
 
     pop()
 
@@ -460,20 +460,93 @@ def show_scenes_cb(features, results):
         cmd.set_view(view)
         cmd.scene('new', 'store')
 
-    # cmd.mset("1 x1", 1)
-    # cmd.set('scene_loop')
-    # cmd.set('movie_fps', 0.5)
-    # cmd.mdo(1, 'scene auto, next')
-    # cmd.mplay()
+
+def loop_scenes():
+    cmd.mset("1 x1", 1)
+    cmd.set('scene_loop')
+    cmd.set('movie_fps', 0.5)
+    cmd.mdo(1, 'scene auto, next')
+    cmd.mplay()
+
 
 def show_orbit_cb(features, results):
+    """Callback to orbit camera around object passing low- and high viewpoint entropy views.
 
+    Keyword arguments:
+    features -- not used
+    results -- list of (view, entropy) pairs obtained from ImageSampler
+    """
+
+    # we want both the max and the min entropy to be on the camera orbit
     (view1, high_entropy) = max(results, key=lambda result: result[1])
     (view2, low_entropy) = min(results, key=lambda result: result[1])
 
+    # find the vector orthogonal to the respective look at vectors
+    look_at1 = get_cam(view1)
+    look_at2 = get_cam(view2)
+
+    # align z to the up-vector of the camera
+    # compute the new view matrix
+    up = look_at1.cross(look_at2).normalize()
+    right = up.cross(look_at1).normalize()
+
     pop()
 
-    make_movie([view1, view2])
+    R = mat3()
+    R.setRow(0, right)
+    R.setRow(1, up)
+    R.setRow(2, look_at1)
+
+    current_view = cmd.get_view()
+    view = []
+    view.extend(R.toList())
+    view.extend(current_view[9:18])
+
+    cmd.set_view(view)
+
+    roll_camera(200, "y")
+
+
+def roll_object (selection, frames, rotation_axis):
+    angle = 360/frames
+    frame = 1
+
+    cmd.set("matrix_mode", 1)
+
+    cmd.mset("1 x100", 1)
+
+    cmd.frame(1)
+    cmd.mview("store")
+    cmd.mview("store", object=selection)
+
+    while frame <= frames:
+        cmd.frame(frame)
+        cmd.rotate(rotation_axis, angle, object=selection)
+        cmd.mview("store", frame)
+        frame += 1
+
+    cmd.mplay()
+
+def roll_camera (frames, rotation_axis, filename = None):
+    frames = int(frames)
+    angle = 360.0/float(frames)
+    frame = 1
+
+    s = "1 x" + str(frames)
+    cmd.mset(s, 1)
+
+    cmd.mview("store", 1, power=1.0)
+
+    while frame <= frames:
+        cmd.turn(rotation_axis, angle)
+        cmd.mview("store", frame, power = 1.0)
+        if filename is not None:
+            if ray:
+                cmd.ray()
+        frame += 1
+
+    cmd.mplay()
+
 
 def set_best_view(selection='all', by='residues', n=10, width=100, height=100, ray=0, prefix='', add_PCA = False, cb = set_best_view_cb):
     # formalise parameters
@@ -500,6 +573,13 @@ def set_best_view(selection='all', by='residues', n=10, width=100, height=100, r
 
 def show_scenes(selection='all', by='residues', n=10, width=100, height=100):
     set_best_view(selection, by, n, width, height, 0, '', False, cb=show_scenes_cb)
+
+def play_tour(features, results):
+    show_scenes_cb(features, results)
+    loop_scenes()
+
+def tour(selection='all', by='residues', n=10, width=100, height=100):
+    set_best_view(selection, by, n, width, height, 0, '', False, cb=play_tour)
 
 def orbit(selection='all', by='residues', n=10, width=100, height=100):
     set_best_view(selection, by, n, width, height, 0, '', False, cb=show_orbit_cb)
@@ -528,7 +608,7 @@ def get_PCA_views(selection):
 def spherical_distance(a, b):
     avec = vec3(a).normalize()
     bvec = vec3(b).normalize()
-    
+
     return atan2(avec.cross(bvec).length(), avec * bvec)
 
 
@@ -754,8 +834,10 @@ def array2PIL(arr, size):
 ist = ImageSampler()
 
 cmd.extend('set_best_view', set_best_view)
-cmd.extend('show_tour', tour)
+cmd.extend('show_scenes', show_scenes)
+cmd.extend('tour', tour)
 cmd.extend('orbit', orbit)
+cmd.extend('loop_scenes', loop_scenes)
 
 if DEBUG:
     cmd.extend('viewpoint_entropy', viewpoint_entropy)
@@ -763,3 +845,5 @@ if DEBUG:
     cmd.extend('apply_false_color_settings', apply_false_color_settings)
     cmd.extend('push', push)
     cmd.extend('pop', pop)
+    cmd.extend('draw_up_vector', draw_up_vector)
+    cmd.extend('roll_camera', roll_camera)
