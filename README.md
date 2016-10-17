@@ -26,17 +26,69 @@ run viewpoints.py
 set_best_view all, residues, 100
 ```
 
-## Usage
+## API
 
-The script currently exposes a single command:
+```python
+def set_best_view(selection='all', by='residues', n=10, width=100, height=100, add_PCA = False, cb = set_best_view_cb):
+    """
+    Set the best view on a given selection.
 
+    Keyword arguments:
+    selection -- a PyMOL selection (default is 'all')
+    by -- one of ('atoms', 'residues', 'ss', 'chain')
+    n -- the number of samples to evaluate
+    width -- the width (in pixels) for each sample
+    height -- the height (in pixels) for each sample
+    add_PCA -- include (TRUE) PCA viewpoints in addition to the n samples? (default is False)
+    cb -- a callback reserved for internal use
+    """
 ```
-set_best_view(selection='all', by='residues', n=10, width=512, height=512, ray=0, prefix='', add_PCA = False)
+
+Best views can be determined by *residues*, secondary structure (*ss*), *atoms*, or *chain*. This parameter determines the level of detail at which entropy is computed. If set to *chain*, a good view will show as much as possible from all chains but doesn't care if individual residues are obscured. If set to *atoms*, each hidden atom will add a penalty to the viewpoint score. 
+
+The more samples *n* are specified, the more different camera positions are evaluated and the one with the highest score (currently: the viewpoint entropy) is chosen as the best view. Note that larger *n* results in longer processing times, just as larger image dimensions will.
+
+```python
+def orbit(selection='all', by='residues', n=10, width=100, height=100):
+    """
+    Shows a 360-degree rotation around the selection passing the highest and lowest viewpoint-entropy views.
+
+    Keyword arguments:
+    selection -- a PyMOL selection (default is 'all')
+    by -- one of ('atoms', 'residues', 'ss', 'chain')
+    n -- the number of samples to evaluate
+    width -- the width (in pixels) for each sample
+    height -- the height (in pixels) for each sample
+    """
 ```
 
-Best views can be determined by *residues*, secondary structure (*ss*), *atoms*, or *chain*. 
+```python
+def show_scenes(selection='all', by='residues', n=10, width=100, height=100):
+    """
+    Computes a set of scenes from clustering viewpoint entropy.
 
-The more samples *n* are specified, the more different camera positions are evaluated and the one with the highest score (currently: the viewpoint entropy) is chosen as the best view.
+    Keyword arguments:
+    selection -- a PyMOL selection (default is 'all')
+    by -- one of ('atoms', 'residues', 'ss', 'chain')
+    n -- the number of samples to evaluate
+    width -- the width (in pixels) for each sample
+    height -- the height (in pixels) for each sample
+    """
+```
+
+```python
+def tour(selection='all', by='residues', n=10, width=100, height=100):
+    """
+    Plays a camera tour passing scenes from clustering viewpoint entropy.
+
+    Keyword arguments:
+    selection -- a PyMOL selection (default is 'all')
+    by -- one of ('atoms', 'residues', 'ss', 'chain')
+    n -- the number of samples to evaluate
+    width -- the width (in pixels) for each sample
+    height -- the height (in pixels) for each sample
+    """
+```
 
 ## Examples
 ### A simple example that demonstrates the best view based on a selection of chains:

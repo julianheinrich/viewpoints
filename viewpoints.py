@@ -548,7 +548,20 @@ def roll_camera (frames, rotation_axis, filename = None):
     cmd.mplay()
 
 
-def set_best_view(selection='all', by='residues', n=10, width=100, height=100, ray=0, prefix='', add_PCA = False, cb = set_best_view_cb):
+def set_best_view(selection='all', by='residues', n=10, width=100, height=100, add_PCA = False, cb = set_best_view_cb):
+    """
+    Set the best view on a given selection.
+
+    Keyword arguments:
+    selection -- a PyMOL selection (default is 'all')
+    by -- one of ('atoms', 'residues', 'ss', 'chain')
+    n -- the number of samples to evaluate
+    width -- the width (in pixels) for each sample
+    height -- the height (in pixels) for each sample
+    add_PCA -- include (TRUE) PCA viewpoints in addition to the n samples? (default is False)
+    cb -- a callback reserved for internal use
+    """
+
     # formalise parameters
     width, height, n = int(width), int(height), int(n)
     selection = str(selection)
@@ -572,6 +585,16 @@ def set_best_view(selection='all', by='residues', n=10, width=100, height=100, r
     ist.run([view for (point, view) in views], width, height, features, False, cb)
 
 def show_scenes(selection='all', by='residues', n=10, width=100, height=100):
+    """
+    Computes a set of scenes from clustering viewpoint entropy.
+
+    Keyword arguments:
+    selection -- a PyMOL selection (default is 'all')
+    by -- one of ('atoms', 'residues', 'ss', 'chain')
+    n -- the number of samples to evaluate
+    width -- the width (in pixels) for each sample
+    height -- the height (in pixels) for each sample
+    """
     set_best_view(selection, by, n, width, height, 0, '', False, cb=show_scenes_cb)
 
 def play_tour(features, results):
@@ -579,9 +602,29 @@ def play_tour(features, results):
     loop_scenes()
 
 def tour(selection='all', by='residues', n=10, width=100, height=100):
+    """
+    Plays a camera tour passing scenes from clustering viewpoint entropy.
+
+    Keyword arguments:
+    selection -- a PyMOL selection (default is 'all')
+    by -- one of ('atoms', 'residues', 'ss', 'chain')
+    n -- the number of samples to evaluate
+    width -- the width (in pixels) for each sample
+    height -- the height (in pixels) for each sample
+    """
     set_best_view(selection, by, n, width, height, 0, '', False, cb=play_tour)
 
 def orbit(selection='all', by='residues', n=10, width=100, height=100):
+    """
+    Shows a 360-degree rotation around the selection passing the highest and lowest viewpoint-entropy views.
+
+    Keyword arguments:
+    selection -- a PyMOL selection (default is 'all')
+    by -- one of ('atoms', 'residues', 'ss', 'chain')
+    n -- the number of samples to evaluate
+    width -- the width (in pixels) for each sample
+    height -- the height (in pixels) for each sample
+    """
     set_best_view(selection, by, n, width, height, 0, '', False, cb=show_orbit_cb)
 
 def get_PCA_views(selection):
