@@ -1,6 +1,5 @@
 from pymol import cmd, stored
 from pymol.cgo import *
-from PIL import Image
 from tempfile import mkdtemp
 from shutil import rmtree
 from math import sin,cos,pi,sqrt,log,acos,degrees,acos,atan2,floor
@@ -9,19 +8,13 @@ import time
 import string
 from cgkit.cgtypes import *
 import colorsys
-import csv
 from axes import *
 import com #center of mass
 import random
 from collections import namedtuple, Counter
-import cv2
 import numpy as np
-from scipy.spatial import ConvexHull, Delaunay
-from threading import Thread, Condition, Lock
-from Queue import Queue, Empty
 import logging
 from sklearn.cluster import MeanShift, estimate_bandwidth
-import aquaria_colors
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s (%(threadName)-2s) %(message)s',
@@ -30,18 +23,9 @@ logging.basicConfig(level=logging.DEBUG,
 # GLOBALS
 
 DEBUG = True
-# counter = 0
-# colors = {}
 tmpdir = "."
 settings_stack = []
 sessionfiles = []
-# images = []
-# image_mask = None
-# image_queue = Queue()
-# entropy_queue = Queue()
-# condition = Condition()
-# entropies = []
-# lock = Lock()
 
 FALSE_COLOR_SETTINGS = {
 #    'cartoon_discrete_colors': 1,
@@ -198,8 +182,8 @@ def assign_colors(selection, by='residues'):
     stored.index = []
     stored.atoms = []
     myspace = {'atoms':[]}
-    if by != 'atoms':
-        selection += ' and n. CA'
+    #if by != 'atoms':
+    #    selection += ' and n. CA'
     cmd.iterate(selection, 'stored.atoms.append((model,chain,ss,resi,name))')
 
     counter = 0
@@ -225,7 +209,7 @@ def assign_colors(selection, by='residues'):
                 previous = chain
 
         # alternating colors from both ends of the spectrum
-        stored.index.append(counter if counter % 2 else -counter)
+        stored.index.append(counter)# if counter % 2 else -counter)
 
     cmd.alter(selection, 'b = stored.index.pop(0)')
 
@@ -302,7 +286,7 @@ def sample_viewpoint_entropy(views, selection='all', by='residues', width=512, h
 
 def get_views(points):
     ''' computes view matrices from points.
-        assumes that the current view defines the up vector of the model '''
+        Assumes that the current view defines the up vector of the model '''
 
     view = cmd.get_view(quiet=not DEBUG)
     rot = get_rotation(view)
@@ -595,9 +579,12 @@ def show_scenes(selection='all', by='residues', n=10, width=100, height=100):
     width -- the width (in pixels) for each sample
     height -- the height (in pixels) for each sample
     """
-    set_best_view(selection, by, n, width, height, 0, '', False, cb=show_scenes_cb)
+    set_best_view(selection, by, n, width, height, False, cb=show_scenes_cb)
 
 def play_tour(features, results):
+    """
+    Callback to loop through best views.
+    """
     show_scenes_cb(features, results)
     loop_scenes()
 
@@ -612,7 +599,7 @@ def tour(selection='all', by='residues', n=10, width=100, height=100):
     width -- the width (in pixels) for each sample
     height -- the height (in pixels) for each sample
     """
-    set_best_view(selection, by, n, width, height, 0, '', False, cb=play_tour)
+    set_best_view(selection, by, n, width, height, False, cb=play_tour)
 
 def orbit(selection='all', by='residues', n=10, width=100, height=100):
     """
@@ -625,7 +612,7 @@ def orbit(selection='all', by='residues', n=10, width=100, height=100):
     width -- the width (in pixels) for each sample
     height -- the height (in pixels) for each sample
     """
-    set_best_view(selection, by, n, width, height, 0, '', False, cb=show_orbit_cb)
+    set_best_view(selection, by, n, width, height, False, cb=show_orbit_cb)
 
 def get_PCA_views(selection):
     old_view = cmd.get_view(quiet=1)
@@ -861,18 +848,6 @@ def rotation_to(a, b):
         tmpVec3 = a.cross(b)
         out = quat(1 + dot, tmpVec3[0], tmpVec3[1], tmpVec3[2])
         return out.normalize()
-
-def PIL2array(img):
-    return np.array(img.getdata(),
-                    np.uint8).reshape(img.size[1], img.size[0], 3)
-
-def array2PIL(arr, size):
-    mode = 'RGBA'
-    arr = arr.reshape(arr.shape[0]*arr.shape[1], arr.shape[2])
-    if len(arr[0]) == 3:
-        arr = np.c_[arr, 255*np.ones((len(arr),1), np.uint8)]
-    return Image.frombuffer(mode, size, arr.tostring(), 'raw', mode, 0, 1)
-
 
 ist = ImageSampler()
 
