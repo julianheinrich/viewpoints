@@ -1,10 +1,10 @@
-# Viewpoints for Molecular Structres in PyMOL
+# Viewpoints for Molecular Structures in PyMOL
 
 __This is an experimental branch that requires a patched version of PyMOL (see below)__
 
-This is a collection of python scripts to determine good views of macromolecular structures with PyMOL. 
+This is a collection of python scripts to determine good views of macromolecular structures with PyMOL.
 
-Currently, the scripts use a random sampling of points on a sphere with fixed radius from the center of mass of a selection to determine a set of candidate viewpoints. Then, the viewpoint with maximal viewpoint entropy is chosen as the 'best' viewpoint. 
+Currently, the scripts use a random sampling of points on a sphere with fixed radius from the center of mass of a selection to determine a set of candidate viewpoints. Then, the viewpoint with maximal viewpoint entropy is chosen as the 'best' viewpoint.
 
 ## Dependencies
 
@@ -21,7 +21,7 @@ git clone https://github.com/julianheinrich/viewpoints.git
 ```
 run viewpoints.py
 ```
-4. Load a structure and run 
+4. Load a structure and run
 ```
 set_best_view all, residues, 100
 ```
@@ -44,7 +44,7 @@ def set_best_view(selection='all', by='residues', n=10, width=100, height=100, a
     """
 ```
 
-Best views can be determined by *residues*, secondary structure (*ss*), *atoms*, or *chain*. This parameter determines the level of detail at which entropy is computed. If set to *chain*, a good view will show as much as possible from all chains but doesn't care if individual residues are obscured. If set to *atoms*, each hidden atom will add a penalty to the viewpoint score. 
+Best views can be determined by *residues*, secondary structure (*ss*), *atoms*, or *chain*. This parameter determines the level of detail at which entropy is computed. If set to *chain*, a good view will show as much as possible from all chains but doesn't care if individual residues are obscured. If set to *atoms*, each hidden atom will add a penalty to the viewpoint score.
 
 The more samples *n* are specified, the more different camera positions are evaluated and the one with the highest score (currently: the viewpoint entropy) is chosen as the best view. Note that larger *n* results in longer processing times, just as larger image dimensions will.
 
