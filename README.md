@@ -1,6 +1,6 @@
 # Viewpoints for Molecular Structures in PyMOL
 
-__This is an experimental branch that requires a patched version of PyMOL (see below)__
+__This plugin requires PyMOL version 1.8.4 or above__
 
 This is a collection of python scripts to determine good views of macromolecular structures with PyMOL.
 
@@ -20,10 +20,6 @@ git clone https://github.com/julianheinrich/viewpoints.git
 3. Start PyMOL and load the viewpoints script
 ```
 run viewpoints.py
-```
-4. Load a structure and run
-```
-set_best_view all, residues, 100
 ```
 
 ## API
@@ -93,6 +89,8 @@ def tour(selection='all', by='residues', n=10, width=100, height=100):
 ## Examples
 ### A simple example that demonstrates the best view based on a selection of chains:
 
+First, load a structure and orient it:
+
 ```
 run viewpoints.py
 fetch 3kmz, async=0
@@ -101,6 +99,8 @@ orient
 ```
 ![3kmz](examples/3kmz/3kmz_chains_pca.png)
 
+Now, set the best view on chains C and D based on evaluating 100 samples with a resolution of 512x512 pixels:
+
 ```
 set_best_view chain C+D, chain, 100, 512, 512
 ```
@@ -108,6 +108,10 @@ set_best_view chain C+D, chain, 100, 512, 512
 ![3kmz](examples/3kmz/3kmz_chains_C_D_vp.png)
 
 ### Show me the ligand
+
+This examples demonstrates how to find a good view on a ligand.
+By default, the ligand (in red) is not visible:
+
 ```
 run viewpoints.py
 fetch 2b50, async=0
@@ -117,6 +121,9 @@ as sticks, organic
 color red, organic
 ```
 ![2b50](examples/2b50/2b50_default.png)
+
+After setting the best view on the ligand, it becomes visible:
+
 ```
 set_best_view organic, atoms, 100, 640, 480
 ```
@@ -150,6 +157,7 @@ mplay
 ### Periodic Orbits
 Periodic orbits are camera orbits around a fixed axis, which is determined by the underlying algorithm. The resulting orbit will pass both low and high viewpoint-entropy views for the given selection. This ensures that both the composition of complexes (which often correspond to low-entropy viewpoints) as well as the overall structure (high entropy viewpoints) should be visible during the rotation:
 <img src='examples/2d1s/orbit.gif'></img>
+
 See [Periodic Orbit Example](examples/2d1s/Readme.md) for details.
 
 ### Automatic Tours
