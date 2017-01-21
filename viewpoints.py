@@ -28,8 +28,7 @@ settings_stack = []
 sessionfiles = []
 
 FALSE_COLOR_SETTINGS = {
-#    'cartoon_discrete_colors': 1,
-#    'cartoon_use_shader': 1,
+    'surface_color_smoothing': 0,
     'orthoscopic': 1,
     'pick_shading': 1,
     'bg_rgb': 'black'
@@ -563,6 +562,9 @@ def set_best_view(selection='all', by='residues', n=10, width=100, height=100, a
     views = get_views(points)
     features = assign_colors(selection, by)
     apply_false_color_settings()
+
+    # TODO: call 'deselect' to remove all selections prior to rendering
+    # also call 'zoom'
 
     # run image sampler for all viewpoints with cb as callback
     #cb = transition_to_best_view_cb if animate else set_best_view_cb
