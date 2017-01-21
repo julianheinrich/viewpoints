@@ -181,6 +181,7 @@ def assign_colors(selection, by='residues'):
     stored.index = []
     stored.atoms = []
     myspace = {'atoms':[]}
+    visited = {}
     #if by != 'atoms':
     #    selection += ' and n. CA'
     cmd.iterate(selection, 'stored.atoms.append((model,chain,ss,resi,name))')
@@ -203,9 +204,9 @@ def assign_colors(selection, by='residues'):
                 counter += increment
                 previous = ss
         elif by == 'chain':
-            if chain != previous:
+            if not chain in visited:
                 counter += increment
-                previous = chain
+                visited[chain] = True
 
         # alternating colors from both ends of the spectrum
         stored.index.append(counter)# if counter % 2 else -counter)
