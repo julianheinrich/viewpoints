@@ -208,8 +208,7 @@ def assign_colors(selection, by='residues'):
                 counter += increment
                 visited[chain] = True
 
-        # alternating colors from both ends of the spectrum
-        stored.index.append(counter)# if counter % 2 else -counter)
+        stored.index.append(counter)
 
     cmd.alter(selection, 'b = stored.index.pop(0)')
 
