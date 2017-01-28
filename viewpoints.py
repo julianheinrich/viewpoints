@@ -193,9 +193,9 @@ def assign_colors(selection, by='residues'):
     logging.debug("coloring by %s", by)
 
     for (model, chain, ss, resi, name) in stored.atoms:
-        if by == 'atoms':
+        if by.startswith('atom'):
             counter += increment
-        elif by == 'residues':
+        elif by.startswith('residue'):
             if resi != previous:
                 counter += increment
                 previous = resi
@@ -203,7 +203,7 @@ def assign_colors(selection, by='residues'):
             if ss != previous:
                 counter += increment
                 previous = ss
-        elif by == 'chain':
+        elif by.startswith('chain'):
             if not chain in visited:
                 counter += increment
                 visited[chain] = True
