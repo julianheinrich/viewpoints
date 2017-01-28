@@ -27,6 +27,7 @@ tmpdir = "."
 settings_stack = []
 sessionfiles = []
 
+# These settings are used for computing the viewpoint entropy
 FALSE_COLOR_SETTINGS = {
     'surface_color_smoothing': 0,
     'orthoscopic': 1,
@@ -34,7 +35,7 @@ FALSE_COLOR_SETTINGS = {
     'bg_rgb': 'black'
 }
 
-
+# Samples images from given views, width, and height.
 class ImageSampler:
 
     def run(self, views, width, height, features, keepFile, callback = None):
@@ -115,7 +116,6 @@ class ImageSampler:
         img_flat = img[:,0] + img[:,1] * 256 + img[:,2] * 65536
         color_count = Counter(img_flat)
 
-
         if DEBUG:
             print "found %i different colors" % len(color_count)
 
@@ -130,7 +130,6 @@ class ImageSampler:
 
     def entropy(self, samples_probability):
         return -sum([p * log(p, 2) for p in samples_probability])
-
 
 
 def viewpoint_entropy(selection='all', by='residues', view=None, width=512, height=512, keepFile=''):
@@ -241,22 +240,14 @@ def compute_viewpoint_entropy(features, view, width, height, keepFile=''):
 
 
 def apply_false_color_settings():
+'''
 
+'''
     logging.debug("setting configuration ", FALSE_COLOR_SETTINGS)
 
     for key in FALSE_COLOR_SETTINGS:
         value = FALSE_COLOR_SETTINGS[key]
         cmd.set(key, value)
-
-def get_temporary_file(filename=''):
-    global tmpdir
-    i = 0
-    tmpFile = "%s/%s_%i.png" % (tmpdir, filename, i)
-    while os.path.exists(tmpFile):
-        i += 1
-        tmpFile = "%s/%s_%i.png" % (tmpdir, filename, i)
-
-    return tmpFile
 
 
 def sample_viewpoint_entropy(views, selection='all', by='residues', width=512, height=512):
@@ -347,6 +338,7 @@ def get_cam(view):
 
     return cam
 
+# Draws the up(white), right(red), and camera(green) vector of the current view.
 def draw_up_vector(radius=1.0, rgb=[1.0, 1.0, 1.0], selection='all'):
     view = cmd.get_view()
     rot = get_rotation_from_view(view)
