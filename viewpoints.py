@@ -660,6 +660,9 @@ def sample_and_show_points(selection='all', n=10, attribute = 'viewpoint_entropy
     #pop()
 
 def push_session():
+'''
+pushes the current session on a stack and saves it to a file
+'''
     global tmpdir
     global sessionfiles
 
@@ -676,12 +679,10 @@ def push_session():
         sessionfiles.append(sessionfile)
         logging.debug("pushing %s", sessionfile)
 
-    # store current colors
-    #stored.color_list = []
-    # myspace = {'color_list':[]}
-    #cmd.iterate(selection, 'stored.color_list.append((chain, resi, name, color))')
-
 def pop_session():
+'''
+pops the session from the stack and removes the corresponding file
+'''
     global sessionfiles
 
     if len(sessionfiles):
@@ -727,27 +728,12 @@ def pop():
 
 
 def cleanup():
-    """remove all temporary data"""
+    """removes all temporary data"""
     if not DEBUG:
         rmtree(tmpdir)
 
-# assumes black background!!!
-def image_area(image):
-    size = image.size[0]*image.size[1]
-    imgColors = image.getcolors(size)
-
-    area = 0
-    bg = (0, 0, 0, 255)
-    for count, color in imgColors:
-        if color != bg:
-            area += count
-
-    area = float(area)/float(size)
-    ret = (area, len(imgColors))
-    return ret
-
 def hammersley_points(n):
-    '''computes hammersley points on the unit sphere'''
+    '''computes n hammersley points on the unit sphere'''
     points = []
     for k in range(n):
         t = 0
@@ -771,6 +757,7 @@ def hammersley_points(n):
 
 # http://mathworld.wolfram.com/SphericalCoordinates.html
 def to_spherical(x, y, z):
+    '''converts Cartesian to spherical coordinates'''
     r = sqrt(x*x + y*y + z*z)
     phirad = acos(z/r)
     thetarad = atan2(y,x)
@@ -778,6 +765,7 @@ def to_spherical(x, y, z):
 
 # http://mathworld.wolfram.com/SphericalCoordinates.html
 def to_cartesian(r, thetarad, phirad):
+    '''converts spherical to Cartesian coordinates'''
     x = r * cos(thetarad) * sin(phirad)
     y = r * sin(thetarad) * sin(phirad)
     z = r * cos(phirad)
