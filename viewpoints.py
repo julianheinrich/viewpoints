@@ -6,7 +6,7 @@ from math import sin,cos,pi,sqrt,log,acos,degrees,acos,atan2,floor
 import os.path
 import time
 import string
-from cgkit.cgtypes import *
+from cgtypes import *
 import colorsys
 from axes import *
 import com #center of mass

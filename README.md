@@ -1,18 +1,36 @@
-# Viewpoints for Molecular Structures in PyMOL
+# Automatic Viewpoint Detection for Molecular Structures in PyMOL
 
-__This plugin requires PyMOL version 1.8.4 or above__
-
-This is a collection of python scripts to determine good views of macromolecular structures with PyMOL.
+This is a plugin for PyMOL to automatically determine good views of macromolecular structures. This is particularly useful to rotate the view to features that are currently hidden from the view, such as small molecules (see the [examples](#Examples)).
 
 Currently, the scripts use a random sampling of points on a sphere with fixed radius from the center of mass of a selection to determine a set of candidate viewpoints. Then, the viewpoint with maximal viewpoint entropy is chosen as the 'best' viewpoint.
 
+If you use this plugin to create figures or animations in PyMOL, please cite:
+
+```
+J. Heinrich et al., “Evaluating Viewpoint Entropy for Ribbon Representation of Protein Structure,” Computer Graphics Forum, vol. 35, no. 3, pp. 181–190, 2016.
+```
+## Quickstart
+
+```
+pip install scipy, numpy, scikit-learn
+git clone https://github.com/julianheinrich/viewpoints.git
+cd viewpoints
+pymol -r viewpoints.py
+```
+
 ## Dependencies
 
-The scripts currently depend on [cgkit light](http://cgkit.sourceforge.net/doc2/introduction.html#cgkit-light) as well as a patched version of PyMOL.
+The scripts currently depend on:
+
+* PyMOL version 1.8.4 or above.
+* [numpy](http://www.numpy.org/)
+* [scipy](https://www.scipy.org/)
+* [scikit-learn](http://scikit-learn.org/stable/)
+
 
 ## Installation
 
-1. Patch and recompile PyMOL
+1. Make sure all dependencies are fulfilled
 2. Clone the repository
 ```
 git clone https://github.com/julianheinrich/viewpoints.git
