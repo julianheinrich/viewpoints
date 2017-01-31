@@ -109,7 +109,7 @@ class ImageSampler:
 
 
     def image_entropy(self, img):
-        """compute the entropy of an image"""
+        """computes the entropy of an image"""
         size = img.shape[0] * img.shape[1]
 
         img.resize((size, 4))
@@ -240,9 +240,9 @@ def compute_viewpoint_entropy(features, view, width, height, keepFile=''):
 
 
 def apply_false_color_settings():
-'''
-
-'''
+    '''
+    applies FALSE_COLOR_SETTINGS
+    '''
     logging.debug("setting configuration ", FALSE_COLOR_SETTINGS)
 
     for key in FALSE_COLOR_SETTINGS:
@@ -635,34 +635,10 @@ def spherical_distance(a, b):
 
     return atan2(avec.cross(bvec).length(), avec * bvec)
 
-
-def sample_and_show_points(selection='all', n=10, attribute = 'viewpoint_entropy', by='ss', width=512, height=512, keepFile = ''):
-    #push()
-
-    apply_false_color_settings()
-
-    n = int(n)
-    width, height = int(width), int(height)
-    #points = []
-    #(pca1, pca2) = getPCAViews(selection)
-    #points.append(pca1)
-    #points.append(pca2)
-    points = hammersley_points(n) #poisson_disc(n, 50, points)
-
-    views = get_views(points)
-    attribs = []
-    for (point, view) in views:
-        a = viewpoint_attribute(attribute, selection, by, view, width, height, keepFile)
-        attribs.append(a)
-
-    show_points(points, [1.0, 0.0, 0.0], selection)
-    show_attribute_sphere(points, attribs, selection, attribute)
-    #pop()
-
 def push_session():
-'''
-pushes the current session on a stack and saves it to a file
-'''
+    '''
+    pushes the current session on a stack and saves it to a file
+    '''
     global tmpdir
     global sessionfiles
 
@@ -680,9 +656,9 @@ pushes the current session on a stack and saves it to a file
         logging.debug("pushing %s", sessionfile)
 
 def pop_session():
-'''
-pops the session from the stack and removes the corresponding file
-'''
+    '''
+    pops the session from the stack and removes the corresponding file
+    '''
     global sessionfiles
 
     if len(sessionfiles):
@@ -770,42 +746,6 @@ def to_cartesian(r, thetarad, phirad):
     y = r * sin(thetarad) * sin(phirad)
     z = r * cos(phirad)
     return (x, y, z)
-
-# values is assumed to be a list of point-value tuples
-def show_points(points, color = [1.0, 0.0, 0.0], selection='all', name = 'samples', labels=[]):
-    view = cmd.get_view(quiet=not DEBUG)
-
-    # adjust radius to size of bounding box
-    bb = cmd.get_extent(selection, quiet=not DEBUG)
-    ll = vec3(bb[0])
-    tr = vec3(bb[1])
-    diag = tr - ll
-    r = diag.length() / 2.0
-
-    # origin of rotation in model space
-    #o = vec3(view[12:15])
-    c = com.COM(selection)
-    o = vec3(c)
-    #spheres = [BEGIN, TRIANGLE_STRIP]
-    spheres = [COLOR]
-    spheres.extend(color)
-    i = 0.0
-    j = 0
-    for p in points:
-
-        #spheres.extend([COLOR, 1.0, 1 - scaled_value, 1 - scaled_value])
-        spheres.extend([SPHERE, o[0]+r*p[0], o[1]+r*p[1], o[2]+r*p[2], 1.25])
-        #drawVector(o, o + r * vec3(p))
-        #spheres.extend([VERTEX, o[0]+r*p[0], o[1]+r*p[1], o[2]+r*p[2]])
-        #i += 1.0/len(values)
-        l = 1.1
-        if (len(labels) > j):
-            cmd.pseudoatom(labels[j] + "_label", pos = [o[0]+l * r*p[0], o[1]+l*r*p[1], o[2]+l*r*p[2], 1.25], label = labels[j])
-
-        j += 1
-
-    #spheres.extend([END])
-    cmd.load_cgo(spheres, name, 1)
 
 def get_rotation_from_view(view):
     rot = mat3(view[0:9])
